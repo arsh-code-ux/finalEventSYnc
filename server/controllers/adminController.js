@@ -2,7 +2,7 @@ const Event = require('../models/Event');
 const Registration = require('../models/Registration');
 const Admin = require('../models/Admin');
 const User = require('../models/User');
-const { sendMail } = require('../utils/mailer');
+const { sendMail, projectLink } = require('../utils/mailer');
 
 const dashboard = async (req, res) => {
   try {
@@ -37,6 +37,51 @@ const adminAllData = async (req, res) => {
     return res.status(500).json({ message: 'Failed to fetch all data' });
   }
 }
+
+const sendAnnouncementToAllUsers = async (req, res) => {
+  try {
+    const { subject, message } = req.body;
+
+    if (!subject || !message) {
+      return res.status(400).json({ message: 'Subject and message are required' });
+    }
+
+    const users = await User.find().select('name email');
+    if (!users.length) {
+      return res.status(400).json({ message: 'No students found to notify' });
+    }
+
+    const results = await Promise.allSettled(
+      users.map((user) => sendMail({
+        to: user.email,
+        subject: `[EventSync] ${subject}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #0891b2;">EventSync Announcement</h2>
+            <p>Hi ${user.name || 'Student'},</p>
+            <div style="background-color: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              ${message}
+            </div>
+            <p>Visit the project here: <a href="${projectLink}">${projectLink}</a></p>
+          </div>
+        `,
+      }))
+    );
+
+    const sent = results.filter(result => result.status === 'fulfilled').length;
+    const failed = results.length - sent;
+
+    res.json({
+      message: `Announcement sent to ${sent} users`,
+      total: users.length,
+      sent,
+      failed,
+    });
+  } catch (err) {
+    console.error('Send announcement error:', err);
+    res.status(500).json({ message: 'Failed to send announcement emails' });
+  }
+};
 
 // Send notifications to event registrants
 const sendNotifications = async (req, res) => {
@@ -106,4 +151,4 @@ const sendNotifications = async (req, res) => {
   }
 };
 
-module.exports = { dashboard, adminAllData, sendNotifications };
+module.exports = { dashboard, adminAllData, sendNotifications, sendAnnouncementToAllUsers };

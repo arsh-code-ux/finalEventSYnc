@@ -2,11 +2,12 @@ const express = require('express');
 const router = express.Router();
 const isAdmin = require('../middlewares/admin');
 const Registration = require('../models/Registration');
-const { dashboard, adminAllData, sendNotifications } = require('../controllers/adminController');
+const { dashboard, adminAllData, sendNotifications, sendAnnouncementToAllUsers } = require('../controllers/adminController');
 
 router.get('/dashboard', isAdmin, dashboard);
 router.get('/all-data', isAdmin, adminAllData);
 router.post('/send-notifications', isAdmin, sendNotifications);
+router.post('/send-all-users', isAdmin, sendAnnouncementToAllUsers);
 
 // Get registrations for a specific event
 router.get('/events/:eventId/registrations', isAdmin, async (req, res) => {

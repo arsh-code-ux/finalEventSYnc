@@ -1,7 +1,7 @@
 const Registration = require('../models/Registration');
 const Event = require('../models/Event');
 const { generateQRCodeDataUrl } = require('../utils/qr');
-const { sendMail } = require('../utils/mailer');
+const { sendMail, projectLink } = require('../utils/mailer');
 
 const registerForEvent = async (req, res) => {
   try {
@@ -55,7 +55,18 @@ const registerForEvent = async (req, res) => {
 
     // send confirmation mail with QR
     try {
-      const html = `<p>Hi ${name},</p><p>You're registered for <strong>${event.title}</strong> on ${new Date(event.date).toLocaleString()}.</p><p>Show this QR code at check-in:</p><img src="${qrDataUrl}" alt="QR" />`;
+      const eventUrl = `${projectLink}/events/${event._id}`;
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #0891b2;">Registration Confirmed</h2>
+          <p>Hi ${name},</p>
+          <p>You're registered for <strong>${event.title}</strong> on ${new Date(event.date).toLocaleString()}.</p>
+          <p>Show this QR code at check-in:</p>
+          <img src="${qrDataUrl}" alt="QR" style="max-width: 220px; border: 1px solid #e2e8f0; padding: 12px; background: #fff;" />
+          <p><a href="${eventUrl}" style="color: #0891b2;">View Event Details</a></p>
+          <p>Project Link: <a href="${projectLink}">${projectLink}</a></p>
+        </div>
+      `;
       await sendMail({ to: email, subject: `Registration: ${event.title}`, html });
     } catch (mailErr) {
       console.warn('Mail send failed', mailErr.message);

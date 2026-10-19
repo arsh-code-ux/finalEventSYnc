@@ -5,7 +5,12 @@ const connectDB = require('./config/db');
 const path = require('path');
 
 const app = express();
-app.use(cors());
+const allowedOrigin = process.env.CLIENT_URL || process.env.PROJECT_URL || 'http://localhost:3000';
+
+app.use(cors({
+  origin: allowedOrigin,
+  credentials: true,
+}));
 app.use(express.json({ limit: '10mb' }));
 
 const PORT = process.env.PORT || 5000;

@@ -1,5 +1,7 @@
 const Event = require('../models/Event');
+const User = require('../models/User');
 const cloudinary = require('../utils/cloudinary');
+const { sendMail, projectLink } = require('../utils/mailer');
 
 // Create event (admin)
 const createEvent = async (req, res) => {
@@ -13,6 +15,39 @@ const createEvent = async (req, res) => {
     }
     if (req.admin) event.createdBy = req.admin._id;
     const created = await Event.create(event);
+
+    const users = await User.find().select('name email');
+    if (users.length > 0) {
+      const eventUrl = `${projectLink}/events/${created._id}`;
+      const promises = users.map((user) => {
+        const html = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #0891b2;">New Event at EventSync</h2>
+            <p>Hi ${user.name || 'Student'},</p>
+            <p>A new event has been published: <strong>${created.title}</strong>.</p>
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <p><strong>Date:</strong> ${new Date(created.date).toLocaleDateString()}</p>
+              <p><strong>Time:</strong> ${created.time}</p>
+              <p><strong>Location:</strong> ${created.location}</p>
+              <p><strong>Description:</strong> ${created.description || 'Check out the event details and register soon.'}</p>
+            </div>
+            <p><a href="${eventUrl}" style="display: inline-block; background: #0891b2; color: #fff; padding: 10px 18px; border-radius: 6px; text-decoration: none;">View Event</a></p>
+          </div>
+        `;
+
+        return sendMail({
+          to: user.email,
+          subject: `[EventSync] New Event: ${created.title}`,
+          html,
+        }).catch((mailErr) => {
+          console.error(`Failed to send event email to ${user.email}:`, mailErr.message);
+          return null;
+        });
+      });
+
+      await Promise.allSettled(promises);
+    }
+
     res.json(created);
   } catch (err) {
     console.error(err);
